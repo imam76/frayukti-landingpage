@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button, Checkbox, Collapse, Tag } from 'antd'
 import {
   AppstoreOutlined,
@@ -510,6 +510,23 @@ function App() {
   )
   const [copyMessage, setCopyMessage] = useState('')
 
+  useEffect(() => {
+    if (!window.location.hash) return
+
+    const target = document.getElementById(window.location.hash.slice(1))
+    if (!target) return
+
+    const previousScrollBehavior = document.documentElement.style.scrollBehavior
+    document.documentElement.style.scrollBehavior = 'auto'
+    target.scrollIntoView({ block: 'start' })
+
+    const frame = window.requestAnimationFrame(() => {
+      document.documentElement.style.scrollBehavior = previousScrollBehavior
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [])
+
   const currentPlan = plans.find((plan) => plan.key === activePlan)
   const currentCategory = moduleCatalog.find(
     (category) => category.key === activeCategory,
@@ -608,7 +625,7 @@ function App() {
   }
 
   return (
-    <div className="site-shell overflow-hidden bg-[#f6f8fa] text-[#081630]">
+    <div className="site-shell overflow-x-clip bg-[#f6f8fa] text-[#081630]">
       <header className="site-header">
         <div className="page-grid header-inner">
           <a className="brand-link" href="#top" aria-label="Frayukti — kembali ke atas">
@@ -1152,7 +1169,10 @@ function App() {
                   />
                   <span
                     style={{
-                      width: `${Math.max(12, (addonPrice / 2000000) * 100)}%`,
+                      width: `${Math.min(
+                        100,
+                        Math.max(12, (addonPrice / 2000000) * 100),
+                      )}%`,
                     }}
                   />
                 </div>

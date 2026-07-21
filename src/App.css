@@ -142,6 +142,7 @@
   position: relative;
   z-index: 2;
   grid-column: span 6;
+  min-width: 0;
   max-width: 720px;
 }
 
@@ -167,19 +168,20 @@
 .hero-title {
   margin: 0;
   color: var(--ink);
-  font-size: clamp(58px, 5.45vw, 90px);
+  font-size: clamp(58px, 5vw, 78px);
   font-weight: 600;
-  letter-spacing: -0.055em;
-  line-height: 0.96;
+  letter-spacing: -0.065em;
+  line-height: 0.91;
 }
 
 .hero-title span {
   display: block;
-  white-space: nowrap;
+  max-width: 100%;
+  white-space: normal;
 }
 
 .hero-title span + span {
-  margin-top: 0.08em;
+  /* margin-top: 0.08em; */
 }
 
 .hero-title-accent {

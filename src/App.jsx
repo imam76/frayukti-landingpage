@@ -360,22 +360,21 @@ const plans = [
     key: 'enterprise',
     name: 'Enterprise',
     index: '03',
-    kicker: 'Sistem sesuai organisasi',
+    kicker: 'Kendali operasional menyeluruh',
     description:
-      'Untuk operasi kompleks dengan banyak fungsi, peran pengguna, dan kebutuhan implementasi khusus.',
-    price: 4800000,
+      'Untuk organisasi dengan proses kritis yang membutuhkan sistem khusus—dirancang mengikuti alur kerja, kontrol, dan target bisnis Anda.',
+    price: null,
     features: [
-      'Seluruh 50 modul bisnis umum',
-      'Produksi & laporan lengkap',
-      'Pengguna fleksibel',
-      'Multi-cabang & entitas',
+      'Perdagangan, ritel, dan distribusi dengan alur pencatatan lintas transaksi yang lebih kompleks',
+      'Manufaktur dengan tahapan produksi detail yang termonitor dari awal hingga akhir',
+      'Yayasan dan nonprofit dengan laporan transparan serta aktivitas keuangan real-time',
+      'Kontraktor dan usaha lain yang membutuhkan proses input-output lebih kompleks',
     ],
-    action: 'Beli Paket Enterprise',
-    hidden: true,
+    action: 'Konsultasikan Enterprise',
   },
 ]
 
-const visiblePlans = plans.filter((plan) => !plan.hidden)
+const visiblePlans = plans
 
 const comparisonRows = [
   {
@@ -388,7 +387,7 @@ const comparisonRows = [
     label: 'Harga beli putus',
     umkm: 'Rp850.000',
     pro: 'Rp1.850.000',
-    enterprise: 'Rp4.800.000',
+    enterprise: 'Disusun sesuai kebutuhan',
   },
   {
     label: 'Modul termasuk',
@@ -423,9 +422,9 @@ const comparisonRows = [
   },
   {
     label: 'Pendampingan',
-    umkm: 'Panduan',
-    pro: 'Sesi setup',
-    enterprise: 'Dedicated',
+    umkm: 'Panduan & pendampingan selama garansi',
+    pro: 'Sesi setup & pendampingan selama garansi',
+    enterprise: 'Dedicated selama garansi',
   },
 ]
 
@@ -448,7 +447,7 @@ const implementationSteps = [
   {
     number: '04',
     title: 'Go-live',
-    text: 'Tim mulai bekerja dengan sistem yang siap, disertai pendampingan.',
+    text: 'Tim mulai bekerja dengan sistem yang siap, lalu didampingi hingga masa garansi berakhir.',
   },
 ]
 
@@ -542,6 +541,7 @@ function App() {
     () => new Set(packageDefaults.umkm),
   )
   const [copyMessage, setCopyMessage] = useState('')
+  const [isSendingConsultation, setIsSendingConsultation] = useState(false)
 
   useEffect(() => {
     if (!window.location.hash) return
@@ -578,7 +578,13 @@ function App() {
     [includedModules, selectedModules],
   )
 
-  const purchaseTotal = currentPlan.price + addonPrice
+  const hasExplicitPlanPrice = Number.isFinite(currentPlan.price)
+  const purchaseTotal = hasExplicitPlanPrice
+    ? currentPlan.price + addonPrice
+    : null
+  const purchaseTotalText = hasExplicitPlanPrice
+    ? `${formatCurrency(purchaseTotal)} (sekali bayar)`
+    : 'Disesuaikan setelah konsultasi'
 
   const changePlan = (planKey, shouldScroll = false) => {
     setActivePlan(planKey)
@@ -586,7 +592,7 @@ function App() {
 
     if (shouldScroll) {
       window.requestAnimationFrame(() => {
-        document.querySelector('#susun-paket')?.scrollIntoView({
+        document.querySelector('#konsultasi')?.scrollIntoView({
           behavior: 'smooth',
           block: 'start',
         })
@@ -607,6 +613,11 @@ function App() {
 
   const handleConsultationSummary = async (event) => {
     event.preventDefault()
+    if (isSendingConsultation) return
+
+    setIsSendingConsultation(true)
+    setCopyMessage('')
+
     const formData = new FormData(event.currentTarget)
     const selectedNames = [...selectedModules]
       .map((id) => moduleById.get(id)?.label)
@@ -621,17 +632,52 @@ function App() {
       `Paket awal: ${currentPlan.name}`,
       `Modul aktif: ${selectedModules.size}`,
       `Pilihan modul: ${selectedNames}`,
-      `Total beli putus: ${formatCurrency(purchaseTotal)} (sekali bayar)`,
+      `Estimasi investasi: ${purchaseTotalText}`,
     ].join('\n')
 
     try {
-      await navigator.clipboard.writeText(summary)
-      setCopyMessage(
-        'Ringkasan tersalin. Tempelkan ke kanal konsultasi Frayukti yang Anda gunakan.',
-      )
-    } catch {
-      window.prompt('Salin ringkasan konsultasi berikut:', summary)
-      setCopyMessage('Ringkasan sudah disiapkan untuk Anda salin.')
+      const telegramResponse = await fetch('/api/telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.get('name'),
+          business: formData.get('business'),
+          contact: formData.get('contact'),
+          industry: formData.get('industry'),
+          plan: currentPlan.name,
+          moduleCount: selectedModules.size,
+          modules: selectedNames,
+          total: purchaseTotalText,
+          pageUrl: window.location.href,
+        }),
+      })
+
+      if (!telegramResponse.ok) {
+        const result = await telegramResponse.json().catch(() => ({}))
+        throw new Error(result.error || 'Pesan belum dapat dikirim')
+      }
+
+      try {
+        await navigator.clipboard.writeText(summary)
+        setCopyMessage(
+          'Ringkasan sudah dikirim ke tim Frayukti dan disalin untuk Anda.',
+        )
+      } catch {
+        window.prompt('Ringkasan sudah dikirim. Salin juga ringkasan berikut:', summary)
+        setCopyMessage('Ringkasan sudah dikirim ke tim Frayukti.')
+      }
+    } catch (error) {
+      try {
+        await navigator.clipboard.writeText(summary)
+        setCopyMessage(
+          `${error.message}. Ringkasan sudah disalin; silakan coba kirim kembali.`,
+        )
+      } catch {
+        window.prompt('Pengiriman belum berhasil. Salin ringkasan berikut:', summary)
+        setCopyMessage(`${error.message}. Silakan coba kembali.`)
+      }
+    } finally {
+      setIsSendingConsultation(false)
     }
   }
 
@@ -828,9 +874,9 @@ function App() {
 
             <div className="section-lead advantage-lead">
               <h2>
-                Yang Anda perlukan,
+                Gunakan modul yang dibutuhkan,
                 <br />
-                <span>tanpa beban yang tidak.</span>
+                <span>tanpa sistem yang berlebihan.</span>
               </h2>
               <p>
                 Frayukti menyederhanakan teknologi menjadi susunan yang bisa
@@ -880,19 +926,20 @@ function App() {
           <div className="page-grid">
             <div className="section-meta">
               <span>02</span>
-              <span>2 Paket Bundling</span>
-              <span>Beli putus</span>
+              <span>3 Paket Bundling</span>
+              <span>Fleksibel</span>
             </div>
 
             <div className="section-lead package-lead">
               <h2>
-                Dua paket. Sekali bayar.
+                Tiga paket. Satu fondasi.
                 <br />
                 <span>Tetap bebas disesuaikan.</span>
               </h2>
               <p>
-                Pilih fondasi terdekat dengan kebutuhan Anda. Setiap paket dapat
-                dibeli sekali dan diperluas dengan modul tambahan kapan pun dibutuhkan.
+                Pilih fondasi terdekat dengan kebutuhan Anda. Paket UMKM dan Pro
+                tersedia dengan skema sekali beli, sedangkan Enterprise dirancang
+                berdasarkan kompleksitas operasi Anda.
               </p>
             </div>
 
@@ -916,9 +963,21 @@ function App() {
                   <h3>{plan.name}</h3>
                   <p className="package-description">{plan.description}</p>
                   <div className="package-price">
-                    <span>Harga tetap</span>
-                    <strong>{formatCurrency(plan.price)}</strong>
-                    <small>sekali bayar</small>
+                    <span>
+                      {Number.isFinite(plan.price)
+                        ? 'Harga tetap'
+                        : 'Investasi implementasi'}
+                    </span>
+                    <strong>
+                      {Number.isFinite(plan.price)
+                        ? formatCurrency(plan.price)
+                        : 'Konsultasikan'}
+                    </strong>
+                    <small>
+                      {Number.isFinite(plan.price)
+                        ? 'sekali bayar'
+                        : 'sesuai kebutuhan'}
+                    </small>
                   </div>
                   <ul>
                     {plan.features.map((feature) => (
@@ -943,9 +1002,10 @@ function App() {
             </div>
 
             <p className="pricing-note">
-              Harga di atas adalah harga beli putus untuk modul bawaan tiap paket,
-              tanpa biaya langganan bulanan. Modul tambahan dibeli terpisah satu kali.
-              Solusi Koperasi tersedia melalui paket dan alur tersendiri.
+              Harga UMKM dan Pro adalah harga beli putus untuk modul bawaan, tanpa
+              biaya langganan bulanan. Investasi Enterprise disusun setelah pemetaan
+              kebutuhan, lingkup implementasi, dan kompleksitas alur kerja. Solusi
+              Koperasi tersedia melalui paket dan alur tersendiri.
             </p>
           </div>
         </section>
@@ -1201,9 +1261,21 @@ function App() {
                   />
                 </div>
                 <div className="summary-total">
-                  <span>Total beli putus</span>
-                  <strong>{formatCurrency(purchaseTotal)}</strong>
-                  <small>sekali bayar*</small>
+                  <span>
+                    {hasExplicitPlanPrice
+                      ? 'Total beli putus'
+                      : 'Investasi Enterprise'}
+                  </span>
+                  <strong>
+                    {hasExplicitPlanPrice
+                      ? formatCurrency(purchaseTotal)
+                      : 'Disesuaikan'}
+                  </strong>
+                  <small>
+                    {hasExplicitPlanPrice
+                      ? 'sekali bayar*'
+                      : 'setelah konsultasi*'}
+                  </small>
                 </div>
                 <Button
                   type="primary"
@@ -1216,8 +1288,9 @@ function App() {
                   Konsultasikan Paket
                 </Button>
                 <p>
-                  *Total mencakup paket dan modul tambahan terpilih. Migrasi data,
-                  integrasi, atau implementasi khusus disepakati terpisah.
+                  {hasExplicitPlanPrice
+                    ? '*Total mencakup paket dan modul tambahan terpilih. Migrasi data, integrasi, atau implementasi khusus disepakati terpisah.'
+                    : '*Lingkup, migrasi data, integrasi, dan kebutuhan implementasi dipetakan terlebih dahulu sebelum investasi disepakati.'}
                 </p>
               </aside>
             </div>
@@ -1267,8 +1340,8 @@ function App() {
               <div>
                 <strong>Terukur sejak awal.</strong>
                 <span>
-                  Lingkup, urutan, dan hasil implementasi disepakati sebelum tim
-                  mulai bekerja.
+                  Lingkup, urutan, hasil implementasi, dan masa garansi disepakati
+                  sebelum tim mulai bekerja.
                 </span>
               </div>
             </div>
@@ -1388,6 +1461,7 @@ function App() {
                   type="primary"
                   size="large"
                   block
+                  loading={isSendingConsultation}
                   icon={<ArrowRightOutlined />}
                   iconPlacement="end"
                 >

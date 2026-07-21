@@ -259,6 +259,18 @@ const allModules = moduleCatalog.flatMap((category) =>
   category.groups.flatMap((group) => group.items),
 )
 
+const bundledModuleCatalog = moduleCatalog.filter(
+  (category) => category.key !== 'koperasi',
+)
+const bundledModuleIds = [
+  ...new Set(
+    bundledModuleCatalog.flatMap((category) =>
+      category.groups.flatMap((group) =>
+        group.items.map((module) => module.id),
+      ),
+    ),
+  ),
+]
 const moduleById = new Map(allModules.map((module) => [module.id, module]))
 const allModuleIds = [...new Set(allModules.map((module) => module.id))]
 
@@ -306,7 +318,7 @@ const packageDefaults = {
     'report-balance',
     'report-stock-card',
   ],
-  enterprise: allModuleIds,
+  enterprise: bundledModuleIds,
 }
 
 const plans = [
@@ -317,14 +329,14 @@ const plans = [
     kicker: 'Fondasi operasional',
     description:
       'Untuk usaha yang ingin transaksi, stok, pembukuan dasar, dan laporan harian lebih tertib.',
-    price: 349000,
+    price: 850000,
     features: [
-      '8 modul inti',
+      '8 modul inti: POS, stok & kas',
+      'Pembelian & laporan esensial',
       'Hingga 3 pengguna',
       '1 cabang usaha',
-      'Panduan onboarding',
     ],
-    action: 'Mulai dari UMKM',
+    action: 'Beli Paket UMKM',
   },
   {
     key: 'pro',
@@ -333,14 +345,15 @@ const plans = [
     kicker: 'Kontrol lintas fungsi',
     description:
       'Untuk tim berkembang yang membutuhkan penjualan, pembelian, SDM, dan keuangan lebih menyeluruh.',
-    price: 899000,
+    price: 1850000,
     features: [
       '31 modul terhubung',
+      'Penjualan lengkap & pembelian inti',
+      'HR, payroll & pembukuan',
       'Hingga 15 pengguna',
       'Hingga 5 cabang',
-      'Sesi konfigurasi awal',
     ],
-    action: 'Pilih Pro',
+    action: 'Beli Paket Pro',
     recommended: true,
   },
   {
@@ -350,16 +363,19 @@ const plans = [
     kicker: 'Sistem sesuai organisasi',
     description:
       'Untuk operasi kompleks dengan banyak fungsi, peran pengguna, dan kebutuhan implementasi khusus.',
-    price: null,
+    price: 4800000,
     features: [
-      'Konfigurasi lintas fungsi',
+      'Seluruh 50 modul bisnis umum',
+      'Produksi & laporan lengkap',
       'Pengguna fleksibel',
       'Multi-cabang & entitas',
-      'Pendampingan khusus',
     ],
-    action: 'Diskusikan Enterprise',
+    action: 'Beli Paket Enterprise',
+    hidden: true,
   },
 ]
+
+const visiblePlans = plans.filter((plan) => !plan.hidden)
 
 const comparisonRows = [
   {
@@ -368,20 +384,37 @@ const comparisonRows = [
     pro: 'Tim berkembang',
     enterprise: 'Organisasi kompleks',
   },
+  {
+    label: 'Harga beli putus',
+    umkm: 'Rp850.000',
+    pro: 'Rp1.850.000',
+    enterprise: 'Rp4.800.000',
+  },
+  {
+    label: 'Modul termasuk',
+    umkm: '8 modul',
+    pro: '31 modul',
+    enterprise: '50 modul',
+  },
   { label: 'Pengguna', umkm: '3', pro: '15', enterprise: 'Fleksibel' },
   { label: 'Cabang', umkm: '1', pro: 'Hingga 5', enterprise: 'Multi-entitas' },
-  { label: 'POS & Transaksi', umkm: true, pro: true, enterprise: true },
+  { label: 'POS & Transaksi', umkm: 'Inti', pro: 'Lengkap', enterprise: 'Lengkap' },
   {
-    label: 'Pembelian lanjutan',
-    umkm: 'Add-on',
-    pro: true,
-    enterprise: true,
+    label: 'Alur pembelian',
+    umkm: 'Inti',
+    pro: 'Terhubung',
+    enterprise: 'Lengkap',
   },
-  { label: 'Master Data', umkm: 'Dasar', pro: true, enterprise: true },
+  { label: 'Master Data', umkm: 'Dasar', pro: 'Operasional', enterprise: 'Lengkap' },
   { label: 'HR & Payroll', umkm: 'Add-on', pro: true, enterprise: true },
   { label: 'Pembukuan', umkm: 'Dasar', pro: true, enterprise: true },
-  { label: 'Koperasi', umkm: 'Add-on', pro: 'Add-on', enterprise: true },
-  { label: 'Laporan', umkm: 'Esensial', pro: 'Lengkap', enterprise: 'Kustom' },
+  {
+    label: 'Koperasi',
+    umkm: 'Paket terpisah',
+    pro: 'Paket terpisah',
+    enterprise: 'Paket terpisah',
+  },
+  { label: 'Laporan', umkm: 'Esensial', pro: 'Bisnis', enterprise: 'Lengkap' },
   {
     label: 'Konfigurasi modul',
     umkm: 'Dapat ditambah',
@@ -435,23 +468,33 @@ const faqItems = [
     label: 'Bisakah modul ditambahkan kemudian?',
     children: (
       <p>
-        Bisa. Susunan Frayukti dirancang untuk berkembang mengikuti kebutuhan,
-        tim, cabang, dan kompleksitas bisnis Anda.
+        Bisa. Modul tambahan juga dibeli satu kali sesuai harga yang tercantum,
+        sehingga sistem dapat berkembang tanpa biaya langganan bulanan.
       </p>
     ),
   },
   {
     key: '3',
-    label: 'Bagaimana harga paket dihitung?',
+    label: 'Apakah ada biaya langganan bulanan?',
     children: (
       <p>
-        Harga mengikuti paket awal, modul tambahan, jumlah pengguna, dan ruang
-        lingkup implementasi. Nilai final dikonfirmasi setelah pemetaan kebutuhan.
+        Tidak. Paket Frayukti menggunakan skema beli putus dengan sekali bayar:
+        UMKM Rp850.000 dan Pro Rp1.850.000.
       </p>
     ),
   },
   {
     key: '4',
+    label: 'Apa yang dapat memengaruhi total pembelian?',
+    children: (
+      <p>
+        Harga paket tetap sesuai modul bawaannya. Total hanya bertambah jika Anda
+        memilih modul tambahan, migrasi data, integrasi, atau implementasi khusus.
+      </p>
+    ),
+  },
+  {
+    key: '5',
     label: 'Bisakah data dari sistem lama dipindahkan?',
     children: (
       <p>
@@ -461,7 +504,7 @@ const faqItems = [
     ),
   },
   {
-    key: '5',
+    key: '6',
     label: 'Apakah Frayukti hanya untuk ritel?',
     children: (
       <p>
@@ -471,7 +514,7 @@ const faqItems = [
     ),
   },
   {
-    key: '6',
+    key: '7',
     label: 'Bagaimana jika saya belum tahu modul yang dibutuhkan?',
     children: (
       <p>
@@ -488,16 +531,6 @@ function formatCurrency(value) {
     currency: 'IDR',
     maximumFractionDigits: 0,
   }).format(value)
-}
-
-function formatCompactCurrency(value) {
-  if (value >= 1000000) {
-    return `Rp ${(value / 1000000).toLocaleString('id-ID', {
-      maximumFractionDigits: 1,
-    })} jt`
-  }
-
-  return `Rp ${Math.round(value / 1000)} rb`
 }
 
 function App() {
@@ -533,8 +566,7 @@ function App() {
   )
 
   const includedModules = useMemo(
-    () =>
-      new Set(activePlan === 'enterprise' ? [] : packageDefaults[activePlan]),
+    () => new Set(packageDefaults[activePlan]),
     [activePlan],
   )
 
@@ -546,8 +578,7 @@ function App() {
     [includedModules, selectedModules],
   )
 
-  const estimatedTotal =
-    currentPlan.price === null ? null : currentPlan.price + addonPrice
+  const purchaseTotal = currentPlan.price + addonPrice
 
   const changePlan = (planKey, shouldScroll = false) => {
     setActivePlan(planKey)
@@ -590,7 +621,7 @@ function App() {
       `Paket awal: ${currentPlan.name}`,
       `Modul aktif: ${selectedModules.size}`,
       `Pilihan modul: ${selectedNames}`,
-      `Estimasi: ${estimatedTotal ? `${formatCurrency(estimatedTotal)} / bulan` : 'Dikonfirmasi setelah pemetaan'}`,
+      `Total beli putus: ${formatCurrency(purchaseTotal)} (sekali bayar)`,
     ].join('\n')
 
     try {
@@ -849,24 +880,24 @@ function App() {
           <div className="page-grid">
             <div className="section-meta">
               <span>02</span>
-              <span>3 Paket Bundling</span>
-              <span>Titik mulai</span>
+              <span>2 Paket Bundling</span>
+              <span>Beli putus</span>
             </div>
 
             <div className="section-lead package-lead">
               <h2>
-                Tiga titik mulai.
+                Dua paket. Sekali bayar.
                 <br />
                 <span>Tetap bebas disesuaikan.</span>
               </h2>
               <p>
                 Pilih fondasi terdekat dengan kebutuhan Anda. Setiap paket dapat
-                diperluas dengan modul tambahan kapan pun dibutuhkan.
+                dibeli sekali dan diperluas dengan modul tambahan kapan pun dibutuhkan.
               </p>
             </div>
 
             <div className="package-grid">
-              {plans.map((plan) => (
+              {visiblePlans.map((plan) => (
                 <article
                   className={`package-card package-${plan.key} ${
                     activePlan === plan.key ? 'is-selected' : ''
@@ -885,19 +916,9 @@ function App() {
                   <h3>{plan.name}</h3>
                   <p className="package-description">{plan.description}</p>
                   <div className="package-price">
-                    {plan.price ? (
-                      <>
-                        <span>Mulai</span>
-                        <strong>{formatCompactCurrency(plan.price)}</strong>
-                        <small>/ bulan</small>
-                      </>
-                    ) : (
-                      <>
-                        <span>Harga</span>
-                        <strong>Sesuai kebutuhan</strong>
-                        <small>setelah pemetaan</small>
-                      </>
-                    )}
+                    <span>Harga tetap</span>
+                    <strong>{formatCurrency(plan.price)}</strong>
+                    <small>sekali bayar</small>
                   </div>
                   <ul>
                     {plan.features.map((feature) => (
@@ -922,8 +943,9 @@ function App() {
             </div>
 
             <p className="pricing-note">
-              *Nominal adalah estimasi konfigurasi awal. Harga final mengikuti
-              modul, pengguna, dan ruang lingkup implementasi.
+              Harga di atas adalah harga beli putus untuk modul bawaan tiap paket,
+              tanpa biaya langganan bulanan. Modul tambahan dibeli terpisah satu kali.
+              Solusi Koperasi tersedia melalui paket dan alur tersendiri.
             </p>
           </div>
         </section>
@@ -955,7 +977,7 @@ function App() {
                 <thead>
                   <tr>
                     <th>Kapabilitas</th>
-                    {plans.map((plan) => (
+                    {visiblePlans.map((plan) => (
                       <th key={plan.key}>
                         <span>{plan.index}</span>
                         {plan.name}
@@ -967,9 +989,11 @@ function App() {
                   {comparisonRows.map((row) => (
                     <tr key={row.label}>
                       <th scope="row">{row.label}</th>
-                      <td>{renderComparisonValue(row.umkm)}</td>
-                      <td>{renderComparisonValue(row.pro)}</td>
-                      <td>{renderComparisonValue(row.enterprise)}</td>
+                      {visiblePlans.map((plan) => (
+                        <td key={plan.key}>
+                          {renderComparisonValue(row[plan.key])}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -978,7 +1002,7 @@ function App() {
 
             <div className="comparison-mobile">
               <div className="mobile-plan-tabs" role="tablist" aria-label="Pilih paket">
-                {plans.map((plan) => (
+                {visiblePlans.map((plan) => (
                   <button
                     type="button"
                     role="tab"
@@ -1046,7 +1070,7 @@ function App() {
             <div className="builder-plan-select" aria-label="Pilih paket awal">
               <span className="builder-control-label">01 / Pilih titik mulai</span>
               <div>
-                {plans.map((plan) => (
+                {visiblePlans.map((plan) => (
                   <button
                     type="button"
                     className={activePlan === plan.key ? 'is-active' : ''}
@@ -1065,7 +1089,7 @@ function App() {
             <div className="builder-category-nav">
               <span className="builder-control-label">02 / Pilih area kerja</span>
               <div className="category-scroll" role="tablist" aria-label="Kategori modul">
-                {moduleCatalog.map((category, index) => (
+                {bundledModuleCatalog.map((category, index) => (
                   <button
                     type="button"
                     role="tab"
@@ -1102,7 +1126,7 @@ function App() {
                     <div className="module-group" key={group.title}>
                       <div className="module-group-title">
                         <span>{group.title}</span>
-                        <span>Estimasi / bulan</span>
+                        <span>Harga add-on / sekali beli</span>
                       </div>
                       <div className="module-list">
                         {group.items.map((module) => {
@@ -1164,7 +1188,7 @@ function App() {
                   <span style={{ width: '100%' }} />
                   <span
                     style={{
-                      width: `${Math.max(24, (selectedModules.size / allModuleIds.length) * 100)}%`,
+                      width: `${Math.max(24, (selectedModules.size / bundledModuleIds.length) * 100)}%`,
                     }}
                   />
                   <span
@@ -1177,18 +1201,9 @@ function App() {
                   />
                 </div>
                 <div className="summary-total">
-                  <span>Estimasi paket</span>
-                  {estimatedTotal ? (
-                    <>
-                      <strong>{formatCurrency(estimatedTotal)}</strong>
-                      <small>per bulan*</small>
-                    </>
-                  ) : (
-                    <>
-                      <strong>Harga khusus</strong>
-                      <small>setelah pemetaan</small>
-                    </>
-                  )}
+                  <span>Total beli putus</span>
+                  <strong>{formatCurrency(purchaseTotal)}</strong>
+                  <small>sekali bayar*</small>
                 </div>
                 <Button
                   type="primary"
@@ -1201,8 +1216,8 @@ function App() {
                   Konsultasikan Paket
                 </Button>
                 <p>
-                  *Estimasi sementara. Harga final mengikuti kebutuhan pengguna,
-                  integrasi, dan implementasi.
+                  *Total mencakup paket dan modul tambahan terpilih. Migrasi data,
+                  integrasi, atau implementasi khusus disepakati terpisah.
                 </p>
               </aside>
             </div>
